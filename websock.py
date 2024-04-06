@@ -1,8 +1,6 @@
 import websocket
 from kafka import KafkaProducer
 import json
-from time import sleep
-import threading
 
 bootstrap_servers = "localhost:9092"
 topic = "btc_trades"
@@ -30,11 +28,8 @@ def on_open(ws):
     print("Connection opened")
 
 
-if __name__ == "__main__":
-    ws_url = "wss://stream.binance.com:9443/ws/btcusdt@trade"
+ws_url = "wss://stream.binance.com:9443/ws/btcusdt@trade"
 
-    ws = websocket.WebSocketApp(
-        ws_url, on_message=on_message, on_error=on_error, on_close=on_close
-    )
-    ws.on_open = on_open
-    ws.run_forever()
+ws = websocket.WebSocketApp(ws_url, on_message=on_message, on_error=on_error, on_close=on_close)
+ws.on_open = on_open
+ws.run_forever()
