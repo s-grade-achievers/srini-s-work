@@ -4,6 +4,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, LongType, BooleanType
 import os
+import traceback
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 temp_dir = os.path.join(current_dir, "temp")
@@ -67,18 +68,19 @@ def write_stream_to_file(streaming, query_name):
     )
     query.awaitTermination()
 
-
 def read_file_to_hive(spark, input_dir, table_name):
-    while True:
-        json_files = [f for f in os.listdir(input_dir) if f.endswith(".json")]
-        for json_file in json_files:
-            # Read the JSON file
+    json_files = [f for f in os.listdir(input_dir) if f.endswith(".json")]
+    for json_file in json_files:
+        try:
             df = spark.read.json(os.path.join(input_dir, json_file))
-            
-            df = df.withColumn("value", from_json(df["value"], schema))
+
+            df = df.withColumn("parsed_value", from_json(df["value"], schema))
 
             for field in schema.fields:
-                df = df.withColumn(field.name, col("value." + field.name))
+                if df.columns.count(field.name) == 0:
+                    df = df.withColumn(field.name, col("parsed_value." + field.name))
+
+            df = df.drop("value").drop("parsed_value")
 
             if not df.rdd.isEmpty():
                 df.write.insertInto(table_name)
@@ -87,6 +89,10 @@ def read_file_to_hive(spark, input_dir, table_name):
                 crc_file = f".{json_file}.crc"
                 if os.path.exists(os.path.join(input_dir, crc_file)):
                     os.remove(os.path.join(input_dir, crc_file))
+        except Exception as e:
+            print(f"Error processing file {json_file}: {e}")
+            traceback.print_exc()
+
         time.sleep(0.1)
 
 
