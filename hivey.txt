@@ -1,11 +1,11 @@
 SELECT 
-    s as tradingpair, (COUNT(CASE WHEN m = TRUE THEN 1 END) / COUNT(*)) * 100 AS market_maker_percent
+    s as tradingpair, (COUNT(CASE WHEN m1 = TRUE THEN 1 END) / COUNT(*)) * 100 AS market_maker_percent
 FROM 
-    btc.trades;
+    btc.srini_s_warriors GROUP BY s;
 
 
 SELECT CONCAT(s,'', b, '_', a) AS trading_pair, SUM(p*q) AS trading_volume 
-FROM btc.trades 
+FROM btc.srini_s_warriors 
 GROUP BY s, b, a 
 ORDER BY trading_volume DESC 
 LIMIT 5;
