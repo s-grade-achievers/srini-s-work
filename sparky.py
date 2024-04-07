@@ -8,16 +8,16 @@ import json
 import traceback
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-temp_dir = os.path.join(current_dir, "temp")
+temp_dir = os.path.join(current_dir, "srini_s_warriors")
 
 spark = SparkSession.builder.appName("Sparky").enableHiveSupport().getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
 
 spark.sql("CREATE DATABASE IF NOT EXISTS btc")
-if not spark.catalog.tableExists("btc.srini-s-warriors"):
+if not spark.catalog.tableExists("btc.srini_s_warriors"):
     spark.sql(
         """
-        CREATE TABLE IF NOT EXISTS btc.srini-s-warriors (
+        CREATE TABLE IF NOT EXISTS btc.srini_s_warriors (
             e1 STRING, 
             E STRING, 
             s STRING, 
@@ -108,7 +108,7 @@ def read_file_to_hive(spark, input_dir):
             dict_list = read_txt(os.path.join(input_dir, file))
             if dict_list:
                 df = spark.createDataFrame(dict_list)
-                df.write.mode("append").format("hive").saveAsTable("btc.srini-s-warriors")
+                df.write.mode("append").format("hive").saveAsTable("btc.srini_s_warriors")
 
             os.remove(os.path.join(input_dir, file))
             crc_file = f".{file}.crc"
