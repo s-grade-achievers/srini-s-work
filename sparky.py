@@ -14,36 +14,37 @@ spark = SparkSession.builder.appName("Sparky").enableHiveSupport().getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
 
 spark.sql("CREATE DATABASE IF NOT EXISTS btc")
-spark.sql(
+if not spark.catalog.tableExists("btc.trades"):
+    spark.sql(
+        """
+        CREATE TABLE IF NOT EXISTS btc.trades (
+            e1 STRING, 
+            E STRING, 
+            s STRING, 
+            t1 LONG, 
+            p STRING, 
+            q STRING, 
+            b LONG, 
+            a LONG, 
+            T LONG, 
+            m1 BOOLEAN, 
+            M BOOLEAN
+        )
     """
-    CREATE TABLE IF NOT EXISTS btc.trades (
-        EventType STRING, 
-        EventTime STRING, 
-        Symbol STRING, 
-        TradeId LONG, 
-        Price DOUBLE, 
-        Quantity DOUBLE, 
-        BuyerOrderId LONG, 
-        SellerOrderId LONG, 
-        TradeTime LONG, 
-        IsBuyerMaker BOOLEAN, 
-        Ignore BOOLEAN
     )
-"""
-)
 
 schema = StructType(
     [
-        StructField("e", StringType()),
+        StructField("e1", StringType()),
         StructField("E", LongType()),
         StructField("s", StringType()),
-        StructField("t", LongType()),
+        StructField("t1", LongType()),
         StructField("p", StringType()),
         StructField("q", StringType()),
         StructField("b", LongType()),
         StructField("a", LongType()),
         StructField("T", LongType()),
-        StructField("m", BooleanType()),
+        StructField("m1", BooleanType()),
         StructField("M", BooleanType()),
     ]
 )
@@ -76,14 +77,27 @@ def read_txt(file):
         f = [i[2:-2] for i in f]
         f = [i.split(",") for i in f]
         f = [[item.replace("\\", "") for item in sublist] for sublist in f]
+        result = []
         for item in f:
             item[-1] = item[-1][:-1]
+            item = [
+                (
+                    x.replace('e":', 'e1":')
+                    if 'e":' in x
+                    else (
+                        x.replace('m":', 'm1":')
+                        if 'm":' in x
+                        else x.replace('t":', 't1":') if 't":' in x else x
+                    )
+                )
+                for x in item
+            ]
             json_str = "{" + ", ".join(item) + "}"
             try:
-                json.loads(json_str)
+                result.append(json.loads(json_str))
             except Exception as e:
                 print(f"Error decoding JSON: {e}")
-        return [json.loads("{" + ", ".join(item) + "}") for item in f]
+        return result
 
 
 def read_file_to_hive(spark, input_dir, table_name):
@@ -92,9 +106,9 @@ def read_file_to_hive(spark, input_dir, table_name):
         print(file)
         try:
             dict_list = read_txt(os.path.join(input_dir, file))
-
-            df = spark.createDataFrame(dict_list)
-            df.write.mode("append").saveAsTable("btc.trades")
+            if dict_list:
+                df = spark.createDataFrame(dict_list)
+                df.write.mode("append").format("hive").saveAsTable("btc.trades")
 
             os.remove(os.path.join(input_dir, file))
             crc_file = f".{file}.crc"
