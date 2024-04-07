@@ -1,3 +1,9 @@
+SELECT 
+    s as tradingpair, (COUNT(CASE WHEN m = TRUE THEN 1 END) / COUNT(*)) * 100 AS market_maker_percent
+FROM 
+    btc.trades;
+
+
 SELECT s AS tradingpair, avg(cast(m as INT))*100 AS percent_marketmaker FROM btc.trades GROUP BY s;
 
 
