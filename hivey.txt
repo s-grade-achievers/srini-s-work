@@ -1,0 +1,10 @@
+SELECT s AS tradingpair, avg(cast(m as INT))*100 AS percent_marketmaker FROM btc.trades GROUP BY s;
+
+
+SELECT CONCAT(s,'', b, '_', a) AS trading_pair, SUM(p*q) AS trading_volume FROM btc.trades GROUP BY s ORDER BY trading_volume DESC LIMIT 5;
+
+SELECT CONCAT(s,'', b, '_', a) AS trading_pair, SUM(p*q) AS trading_volume 
+FROM btc.trades 
+GROUP BY s, b, a 
+ORDER BY trading_volume DESC 
+LIMIT 5;
