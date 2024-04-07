@@ -3,7 +3,7 @@ from kafka import KafkaProducer
 import json
 
 bootstrap_servers = "localhost:9092"
-topic = "btc_trades"
+topic = "srini-s-warriors"
 
 producer = KafkaProducer(
     bootstrap_servers=bootstrap_servers,

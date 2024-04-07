@@ -14,10 +14,10 @@ spark = SparkSession.builder.appName("Sparky").enableHiveSupport().getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
 
 spark.sql("CREATE DATABASE IF NOT EXISTS btc")
-if not spark.catalog.tableExists("btc.trades"):
+if not spark.catalog.tableExists("btc.srini-s-warriors"):
     spark.sql(
         """
-        CREATE TABLE IF NOT EXISTS btc.trades (
+        CREATE TABLE IF NOT EXISTS btc.srini-s-warriors (
             e1 STRING, 
             E STRING, 
             s STRING, 
@@ -52,7 +52,7 @@ schema = StructType(
 streaming = (
     spark.readStream.format("kafka")
     .option("kafka.bootstrap.servers", "localhost:9092")
-    .option("subscribe", "btc_trades")
+    .option("subscribe", "srini-s-warriors")
     .load()
 )
 
@@ -100,15 +100,15 @@ def read_txt(file):
         return result
 
 
-def read_file_to_hive(spark, input_dir, table_name):
+def read_file_to_hive(spark, input_dir):
     files = [f for f in os.listdir(input_dir) if f.endswith(".txt")]
     for file in files:
-        print(file)
+        print("team srini-s-warriors added file", file, "to hive")
         try:
             dict_list = read_txt(os.path.join(input_dir, file))
             if dict_list:
                 df = spark.createDataFrame(dict_list)
-                df.write.mode("append").format("hive").saveAsTable("btc.trades")
+                df.write.mode("append").format("hive").saveAsTable("btc.srini-s-warriors")
 
             os.remove(os.path.join(input_dir, file))
             crc_file = f".{file}.crc"
@@ -119,7 +119,7 @@ def read_file_to_hive(spark, input_dir, table_name):
             traceback.print_exc()
 
 t1 = threading.Thread(target=write_stream_to_file, args=(streaming, "streaming"))
-t2 = threading.Thread(target=read_file_to_hive, args=(spark, temp_dir, "btc.trades"))
+t2 = threading.Thread(target=read_file_to_hive, args=(spark, temp_dir))
 t1.start()
 time.sleep(1)
 t2.start()
