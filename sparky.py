@@ -4,6 +4,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import from_json, col
 from pyspark.sql.types import StructType, StructField, StringType, DoubleType, IntegerType, LongType, BooleanType
 import os
+import json
 import traceback
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -60,7 +61,7 @@ streaming = streaming.selectExpr("CAST(value AS STRING)")
 def write_stream_to_file(streaming, query_name):
     query = (
         streaming.writeStream.outputMode("append")
-        .format("json")
+        .format("text")
         .option("path", temp_dir)
         .option("checkpointLocation", f"{temp_dir}/checkpoint")
         .queryName(query_name)
@@ -68,33 +69,40 @@ def write_stream_to_file(streaming, query_name):
     )
     query.awaitTermination()
 
+
+def read_txt(file):
+    with open(file, "r") as f:
+        f = f.readlines()
+        f = [i[2:-2] for i in f]
+        f = [i.split(",") for i in f]
+        f = [[item.replace("\\", "") for item in sublist] for sublist in f]
+        for item in f:
+            item[-1] = item[-1][:-1]
+            json_str = "{" + ", ".join(item) + "}"
+            try:
+                json.loads(json_str)
+            except Exception as e:
+                print(f"Error decoding JSON: {e}")
+        return [json.loads("{" + ", ".join(item) + "}") for item in f]
+
+
 def read_file_to_hive(spark, input_dir, table_name):
-    json_files = [f for f in os.listdir(input_dir) if f.endswith(".json")]
-    for json_file in json_files:
+    files = [f for f in os.listdir(input_dir) if f.endswith(".txt")]
+    for file in files:
+        print(file)
         try:
-            df = spark.read.json(os.path.join(input_dir, json_file))
+            dict_list = read_txt(os.path.join(input_dir, file))
 
-            df = df.withColumn("parsed_value", from_json(df["value"], schema))
+            df = spark.createDataFrame(dict_list)
+            df.write.mode("append").saveAsTable("btc.trades")
 
-            for field in schema.fields:
-                if df.columns.count(field.name) == 0:
-                    df = df.withColumn(field.name, col("parsed_value." + field.name))
-
-            df = df.drop("value").drop("parsed_value")
-
-            if not df.rdd.isEmpty():
-                df.write.insertInto(table_name)
-
-                os.remove(os.path.join(input_dir, json_file))
-                crc_file = f".{json_file}.crc"
-                if os.path.exists(os.path.join(input_dir, crc_file)):
-                    os.remove(os.path.join(input_dir, crc_file))
+            os.remove(os.path.join(input_dir, file))
+            crc_file = f".{file}.crc"
+            if os.path.exists(os.path.join(input_dir, crc_file)):
+                os.remove(os.path.join(input_dir, crc_file))
         except Exception as e:
-            print(f"Error processing file {json_file}: {e}")
+            print(f"Error processing file {file}: {e}")
             traceback.print_exc()
-
-        time.sleep(0.1)
-
 
 t1 = threading.Thread(target=write_stream_to_file, args=(streaming, "streaming"))
 t2 = threading.Thread(target=read_file_to_hive, args=(spark, temp_dir, "btc.trades"))
